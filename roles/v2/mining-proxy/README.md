@@ -5,7 +5,7 @@
 ## proxy-config.toml file
 
 When spawned the proxy will look in the current working directory (linux) for a
-`proxy-config.config` if the file is not available the proxy will panic. We can specify a different
+`proxy-config.toml` if the file is not available the proxy will panic. We can specify a different
 path for the config file with the `-c` option.
 
 The config need to be a valid toml file with the below values:
