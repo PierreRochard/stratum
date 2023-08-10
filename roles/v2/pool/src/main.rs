@@ -160,27 +160,36 @@ mod args {
 
 #[tokio::main]
 async fn main() {
+    info!("Starting pool");
     tracing_subscriber::fmt::init();
 
+    info!("Parsing command line arguments");
     let args = match args::Args::from_args() {
-        Ok(cfg) => cfg,
+        Ok(cfg) => {
+            info!("Using config file: {}", cfg.config_path.display());
+            cfg
+        },
         Err(help) => {
             error!("{}", help);
             return;
         }
     };
 
-    // Load config
+    info!("Reading config from file");
     let config: Configuration = match std::fs::read_to_string(&args.config_path) {
         Ok(c) => match toml::from_str(&c) {
-            Ok(c) => c,
+            Ok(c) => {
+                info!("Config parsed successfully");
+                info!("Config: {:?}", &c);
+                c
+            },
             Err(e) => {
                 error!("Failed to parse config: {}", e);
                 return;
             }
         },
         Err(e) => {
-            error!("Failed to read config: {}", e);
+            error!("Failed to read config: {0} {1}", e, args.config_path.display());
             return;
         }
     };
@@ -193,6 +202,7 @@ async fn main() {
     info!("Pool INITIALIZING with config: {:?}", &args.config_path);
     let coinbase_output_len = get_coinbase_output(&config).len() as u32;
 
+    info!("Connecting to Template Provider at {}", config.tp_address);
     let template_rx_res = TemplateRx::connect(
         config.tp_address.parse().unwrap(),
         s_new_t,
@@ -204,14 +214,16 @@ async fn main() {
     )
     .await;
     if let Err(e) = template_rx_res {
-        error!("Could not connect to Template Provider: {}", e);
+        error!("Could not connect to Template Provider : {0} {1}", e, config.tp_address);
         return;
     }
 
+    info!("Starting Job Negotiator");
     let cloned = config.clone();
     let sender = status::Sender::Downstream(status_tx.clone());
     task::spawn(async move { JobNegotiator::start(cloned, sender).await });
 
+    info!("Starting Pool");
     let pool = Pool::start(
         config.clone(),
         r_new_t,
@@ -224,6 +236,7 @@ async fn main() {
     // Start the error handling loop
     // See `./status.rs` and `utils/error_handling` for information on how this operates
     loop {
+        info!("Waiting for status message");
         let task_status = select! {
             task_status = status_rx.recv() => task_status,
             interrupt_signal = tokio::signal::ctrl_c() => {
@@ -240,6 +253,8 @@ async fn main() {
             }
         };
         let task_status: Status = task_status.unwrap();
+
+        info!("Received status message: {:?}", task_status);
 
         match task_status.state {
             // Should only be sent by the downstream listener

@@ -532,7 +532,7 @@ impl UpstreamMiningNode {
                 Err(_) => {
                     let address = self_mutex.safe_lock(|s| s.address).unwrap();
                     error!("Upstream node {} is not available", address);
-                    Err(crate::lib::error::Error::UpstreamNotAvailabe(address))
+                    Err(crate::lib::error::Error::UpstreamNotAvailable(address))
                 }
             },
             None => {
@@ -554,7 +554,7 @@ impl UpstreamMiningNode {
                     .unwrap();
                 let socket = TcpStream::connect(address).await.map_err(|_| {
                     error!("Upstream node {} is not available", address);
-                    crate::lib::error::Error::UpstreamNotAvailabe(address)
+                    crate::lib::error::Error::UpstreamNotAvailable(address)
                 })?;
                 info!(
                     "Connected to upstream node {}: now handling noise handshake",

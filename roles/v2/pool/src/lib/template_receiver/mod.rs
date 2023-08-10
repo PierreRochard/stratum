@@ -48,7 +48,9 @@ impl TemplateRx {
             PlainConnection::new(stream).await;
 
         SetupConnectionHandler::setup(&mut receiver, &mut sender, address).await?;
+        info!("Template distribution server handshake complete");
 
+        info!("Creating template receiver");
         let self_ = Arc::new(Mutex::new(Self {
             receiver,
             sender,
@@ -59,6 +61,7 @@ impl TemplateRx {
         }));
         let cloned = self_.clone();
 
+
         let c_additional_size = CoinbaseOutputDataSize {
             coinbase_output_max_additional_size: coinbase_out_len,
         };
@@ -67,9 +70,13 @@ impl TemplateRx {
         )
         .try_into()?;
 
+        info!("Sending coinbase output data size");
         Self::send(self_.clone(), frame).await?;
 
+        info!("Starting template receiver");
         task::spawn(async { Self::start(cloned).await });
+
+        info!("Starting solution receiver");
         task::spawn(async { Self::on_new_solution(self_, solution_receiver).await });
 
         Ok(())

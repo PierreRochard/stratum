@@ -317,6 +317,7 @@ mod args {
 ///    upstream_mining::UpstreamMiningNode begin
 #[tokio::main]
 async fn main() {
+    info!("Starting proxy");
     tracing_subscriber::fmt::init();
     let args = match args::Args::from_args() {
         Ok(cfg) => cfg,
@@ -326,7 +327,9 @@ async fn main() {
         }
     };
 
+
     // Scan all the upstreams and map them
+    info!("Reading config file {0}", args.config_path.display());
     let config_file = std::fs::read_to_string(args.config_path.clone())
         .unwrap_or_else(|_| panic!("Can not open {:?}", args.config_path));
     let config = match toml::from_str::<Config>(&config_file) {
