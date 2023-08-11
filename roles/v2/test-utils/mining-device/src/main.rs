@@ -7,6 +7,8 @@ use roles_logic_sv2::utils::Id;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
+    thread,
+    time
 };
 
 async fn connect(address: SocketAddr, handicap: u32) {
@@ -207,7 +209,18 @@ impl Device {
         });
 
         loop {
-            let mut incoming: StdFrame = receiver.recv().await.unwrap().try_into().unwrap();
+            let mut incoming: StdFrame = match receiver.recv().await {
+                Ok(frame) => match frame.try_into() {
+                    Ok(converted_frame) => converted_frame,
+                    Err(e) => {
+                        eprintln!("Failed to convert frame: {:?}", e);
+                        continue;  // or handle the error in some other appropriate way
+                    }
+                },
+                Err(e) => {
+                    continue;
+                }
+            };
             let message_type = incoming.get_header().unwrap().msg_type();
             let payload = incoming.payload();
             let next = Device::handle_message_mining(
@@ -488,6 +501,7 @@ impl Miner {
         hash.reverse();
         let hash = Uint256::from_be_bytes(hash);
         if hash < *self.target.as_ref().ok_or(())? {
+            thread::sleep(time::Duration::from_secs(5));
             println!(
                 "Found share with nonce: {}, for target: {:?}, with hash: {:?}",
                 header.nonce, self.target, hash,
